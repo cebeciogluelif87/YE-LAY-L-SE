@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#091b17">
+  <title>Yeşiliz ve Kayıp Defterin Sırrı</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Special+Elite&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <audio id="ambientMusic" src="assets/gizem.mp3" preload="auto" loop></audio>
+  <div id="app">
+    <header class="topbar">
+      <button class="brand" data-go="home" aria-label="Ana masaya dön">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <path d="M9 22V12h6v10" />
+          </svg>
+        </span>
+        <span><b>YEŞİL-İZ</b><small>KAYIP DEFTER</small></span>
+      </button>
+      <div class="case-status">
+        <span class="status-light"></span>
+        <span>DOSYA AKTİF</span>
+        <strong id="progressText">0 / 36</strong>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="resetProgress" aria-label="İlerlemeyi sıfırla">SIFIRDAN DENE</button>
+        <button class="icon-button" id="fullscreenToggle" aria-label="Tam ekranı aç">TAM EKRAN</button>
+        <button class="icon-button" id="soundToggle" aria-label="Sesi aç veya kapat">SES: AÇIK</button>
+      </div>
+    </header>
+
+    <main id="view" tabindex="-1"></main>
+
+    <nav class="mobile-nav" aria-label="Ana menü">
+      <button data-go="home"><span>◇</span>Masa</button>
+      <button data-go="board"><span>⌘</span>Dosya</button>
+      <button data-go="notebook"><span>≡</span>Defter</button>
+    </nav>
+  </div>
+
+  <template id="homeTemplate">
+    <section class="desk-view view-enter">
+      <p class="eyebrow case-file-number">DOSYA NO: 01 · 36 HAFTALIK VAKA</p>
+      <div class="desk-copy">
+        <h1>Kayıp defter<br><em>bir iz bıraktı.</em></h1>
+        <div class="next-case-copy">
+          <small>SIRADAKİ DOSYA</small>
+          <b>Bölüm 1</b>
+        </div>
+        <p class="lead">Okulun unutulmuş köşelerinde yarım kalmış bir hikâye var. Bulduğun her kanıt, seni onun gerçek sahibine yaklaştıracak.</p>
+        <button class="primary-action" data-start aria-label="Bölüm 1'i aç">
+          <span>DOSYAYI AÇ</span>
+          <i>→</i>
+        </button>
+        <img class="yesil-iz-character" src="assets/yesil-iz-portrait.png" alt="YEŞİL-İZ, gizemli defterini tutan öğrenci robot karakter">
+      </div>
+
+      <div class="evidence-desk" aria-label="Etkileşimli araştırma masası">
+        <button class="desk-object board-object" data-go="board">
+          <img class="board-image" src="assets/pano-karalamali.png" alt="Gizemli kişi notları ve el yazısıyla karalanmış post-itler içeren kanıt panosu">
+        </button>
+        <div class="lamp-glow"></div>
+      </div>
+      <button class="desk-object notebook-object" data-go="notebook">
+        <img class="notebook-cover" src="assets/izdefteri.png" alt="Eskimiş yeşil deri İz Defteri">
+      </button>
+      <img class="pencil" src="assets/vintage-kalem.png" alt="Bordo gövdeli, pirinç detaylı dolma kalem">
+
+      <div class="home-footer">
+        <span>SON KAYIT <b id="lastSave">Henüz başlanmadı</b></span>
+      </div>
+    </section>
+  </template>
+
+  <template id="boardTemplate">
+    <section class="board-view view-enter">
+      <header class="section-heading">
+        <div><p class="eyebrow">SEZON DOSYASI</p><h2>Kanıt Panosu</h2></div>
+        <p>Her perde, aynı hikâyenin başka bir katmanını açar. Bağlantılar ancak kanıt toplandıkça görünür.</p>
+      </header>
+      <div class="act-tabs" role="tablist"></div>
+      <div class="case-board">
+        <div class="board-grid" aria-hidden="true"></div>
+        <svg class="evidence-lines" aria-hidden="true"></svg>
+        <div class="episode-grid"></div>
+        <aside class="board-note">
+          <span>AKTİF SORU</span>
+          <p>Bu okulda kim, ne zaman ve neden bir iz bıraktı?</p>
+          <small>CEVAP BEKLENİYOR</small>
+        </aside>
+      </div>
+    </section>
+  </template>
+
+  <template id="notebookTemplate">
+    <section class="notebook-view view-enter">
+      <header class="section-heading light-heading">
+        <div><h2>İz Defterim</h2></div>
+        <p>Bulduğun kanıtlar, açık sorular ve kendi cümlelerin burada kalıcı olarak saklanır.</p>
+      </header>
+      <div class="notebook-shell">
+        <nav class="notebook-tabs" role="tablist">
+          <button class="active" data-note-tab="evidence">Kanıtlar <span id="evidenceCount">0</span></button>
+          <button data-note-tab="questions">Açık Sorular <span id="questionCount">0</span></button>
+          <button data-note-tab="notes">Benim Notlarım <span>0</span></button>
+        </nav>
+        <div class="notebook-page" id="notebookContent"></div>
+      </div>
+    </section>
+  </template>
+
+
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="ana.js"></script>
+</body>
+</html>
