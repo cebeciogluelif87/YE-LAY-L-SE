@@ -12,10 +12,12 @@
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
-  <audio id="ambientMusic" src="assets/gizem.mp3" preload="auto" loop></audio>
   <div id="app">
+    <audio id="ambientMusic" src="assets/gizem.mp3" preload="auto" loop></audio>
+    <audio id="clickSound" src="assets/ok.mp3" preload="auto"></audio>
+    
     <header class="topbar">
-      <button class="brand" data-go="home" aria-label="Ana masaya dön">
+      <button class="brand" data-go="home" aria-label="Ana masaya dön" onclick="navigate('home')">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" role="presentation">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -32,16 +34,34 @@
       <div class="top-actions">
         <button class="icon-button" id="resetProgress" aria-label="İlerlemeyi sıfırla">SIFIRDAN DENE</button>
         <button class="icon-button" id="fullscreenToggle" aria-label="Tam ekranı aç">TAM EKRAN</button>
+        <button class="icon-button" id="sfxToggle" aria-label="Efekt Sesi">♫</button>
         <button class="icon-button" id="soundToggle" aria-label="Sesi aç veya kapat">SES: AÇIK</button>
       </div>
     </header>
 
     <main id="view" tabindex="-1"></main>
 
+    <!-- Oyun Iframe Container -->
+    <div id="gameIframeContainer" style="display: none; position: absolute; inset: 0; z-index: 9999;">
+      <iframe id="gameFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+
+
+    <!-- Standart Çerçeveli Zoom Modal Sistemi -->
+    <div class="zoom-modal-backdrop" id="zoomOverlay">
+      <div class="zoom-modal-container" id="zoomContainer">
+        <div class="zoom-content" id="zoomContent">
+          <img id="zoomImage" class="zoom-modal-image" src="" alt="Kanıt İnceleme">
+        </div>
+        <img src="assets/cerceve.png" class="zoom-frame-overlay" alt="Çerçeve" aria-hidden="true">
+        <div class="zoom-close-hint">Kapatmak için dışarı tıklayın veya ESC tuşuna basın</div>
+      </div>
+    </div>
+
     <nav class="mobile-nav" aria-label="Ana menü">
       <button data-go="home"><span>◇</span>Masa</button>
-      <button data-go="board"><span>⌘</span>Dosya</button>
-      <button data-go="notebook"><span>≡</span>Defter</button>
+      <button data-go="board"><span>⌘</span>Kanıt Panosu</button>
+      <button data-go="notebook"><span>≡</span>İz Defteri</button>
     </nav>
   </div>
 
@@ -63,12 +83,12 @@
       </div>
 
       <div class="evidence-desk" aria-label="Etkileşimli araştırma masası">
-        <button class="desk-object board-object" data-go="board">
-          <img class="board-image" src="assets/pano-karalamali.png" alt="Gizemli kişi notları ve el yazısıyla karalanmış post-itler içeren kanıt panosu">
+        <button class="desk-object board-object" data-go="board" title="Kanıt Panosu">
+          <img class="board-image" src="assets/pano-karalamali.png" alt="Kanıt Panosu">
         </button>
         <div class="lamp-glow"></div>
       </div>
-      <button class="desk-object notebook-object" data-go="notebook">
+      <button class="desk-object notebook-object" data-go="notebook" title="İz Defteri">
         <img class="notebook-cover" src="assets/izdefteri.png" alt="Eskimiş yeşil deri İz Defteri">
       </button>
       <img class="pencil" src="assets/vintage-kalem.png" alt="Bordo gövdeli, pirinç detaylı dolma kalem">
@@ -82,15 +102,31 @@
   <template id="boardTemplate">
     <section class="board-view view-enter">
       <header class="section-heading">
-        <div><p class="eyebrow">SEZON DOSYASI</p><h2>Kanıt Panosu</h2></div>
-        <p>Her perde, aynı hikâyenin başka bir katmanını açar. Bağlantılar ancak kanıt toplandıkça görünür.</p>
+        <div>
+          <p class="eyebrow">SOMUT ARAŞTIRMA ARŞİVİ</p>
+          <h2>Kanıt Panosu</h2>
+        </div>
+        <p>Vaka boyunca bulunan somut belgeler, fotoğraflar, semboller ve ipuçları burada arşivlenir.</p>
       </header>
-      <div class="act-tabs" role="tablist"></div>
+
+      <div class="board-nav-tabs" role="tablist">
+        <button class="active" id="btnEvidenceArchive" data-board-view="archive">Somut Kanıtlar <span id="boardEvidenceCount" style="margin-left:6px; font-weight:700;">(0)</span></button>
+        <button id="btnEpisodeMap" data-board-view="episodes">Bölüm Haritası (36 Hafta)</button>
+      </div>
+
+      <div class="act-tabs" id="actTabsBar" style="display: none;" role="tablist"></div>
+
       <div class="case-board">
         <div class="board-grid" aria-hidden="true"></div>
         <svg class="evidence-lines" aria-hidden="true"></svg>
-        <div class="episode-grid"></div>
-        <aside class="board-note">
+        
+        <!-- Somut Kanıtlar Görünümü -->
+        <div class="evidence-archive-grid" id="evidenceArchiveGrid"></div>
+
+        <!-- 36 Bölümlük Bölüm Kartları Görünümü -->
+        <div class="episode-grid" id="episodeCardsGrid" style="display: none;"></div>
+
+        <aside class="board-note" id="boardSideNote" style="display: none;">
           <span>AKTİF SORU</span>
           <p>Bu okulda kim, ne zaman ve neden bir iz bıraktı?</p>
           <small>CEVAP BEKLENİYOR</small>
@@ -102,21 +138,22 @@
   <template id="notebookTemplate">
     <section class="notebook-view view-enter">
       <header class="section-heading light-heading">
-        <div><h2>İz Defterim</h2></div>
-        <p>Bulduğun kanıtlar, açık sorular ve kendi cümlelerin burada kalıcı olarak saklanır.</p>
+        <div>
+          <p class="eyebrow">YEŞİL-İZ'İN ARAŞTIRMA GÜNLÜĞÜ</p>
+          <h2>İz Defterim</h2>
+        </div>
+        <p>Kişisel gözlemler, çıkarımlar, öğrenilen hikâye bilgileri ve henüz yanıt bekleyen açık sorular.</p>
       </header>
       <div class="notebook-shell">
         <nav class="notebook-tabs" role="tablist">
-          <button class="active" data-note-tab="evidence">Kanıtlar <span id="evidenceCount">0</span></button>
-          <button data-note-tab="questions">Açık Sorular <span id="questionCount">0</span></button>
-          <button data-note-tab="notes">Benim Notlarım <span>0</span></button>
+          <button class="active" data-note-tab="thoughts">Düşünceler / Notlar <span id="thoughtsCount">0</span></button>
+          <button data-note-tab="findings">Öğrenilenler <span id="findingsCount">0</span></button>
+          <button data-note-tab="questions">Açık Sorular <span id="questionsCount">0</span></button>
         </nav>
         <div class="notebook-page" id="notebookContent"></div>
       </div>
     </section>
   </template>
-
-
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="ana.js"></script>

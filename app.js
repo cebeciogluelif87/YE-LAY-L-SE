@@ -17,7 +17,7 @@ const episodeNames = [
   "Yarım Kalan Plan", "Yarım Kalan Yerden Devam", "Kayıp Defterin Sonu"
 ];
 
-const defaultState = { completed: [], evidence: [], questions: [], lastSave: null, activeAct: 0, sound: true };
+const defaultState = { completed: [], evidence: [], questions: [], lastSave: null, activeAct: 0, sound: true, sfx: true };
 let state;
 try { state = { ...defaultState, ...JSON.parse(localStorage.getItem("yesiliz-state") || "{}") }; }
 catch { state = { ...defaultState }; }
@@ -52,6 +52,8 @@ function save() {
 function updateChrome() {
   document.querySelector("#progressText").textContent = `${state.completed.length} / 36`;
   document.querySelector("#soundToggle").textContent = `SES: ${state.sound ? "AÇIK" : "KAPALI"}`;
+  const sfxToggle = document.querySelector("#sfxToggle");
+  if (sfxToggle) sfxToggle.textContent = state.sfx ? "🎵" : "🔇";
 }
 
 function showToast(message) {
@@ -184,8 +186,19 @@ document.querySelector("#soundToggle").addEventListener("click", () => {
   state.sound = !state.sound;
   if (state.sound) startAmbientMusic();
   else { ambientMusic.pause(); musicWasUnlocked = false; }
+  updateChrome();
   save();
 });
+
+const sfxBtn = document.querySelector("#sfxToggle");
+if (sfxBtn) {
+  sfxBtn.addEventListener("click", () => {
+    state.sfx = !state.sfx;
+    updateChrome();
+    save();
+  });
+}
+
 document.querySelector("#resetProgress").addEventListener("click", () => {
   if (!window.confirm("Kaydedilmiş ilerleme silinsin ve oyun en baştan başlasın mı?")) return;
   state = { ...defaultState };
@@ -208,3 +221,15 @@ document.addEventListener("mousedown", startAmbientMusic, { once: true });
 document.addEventListener("mousemove", startAmbientMusic, { once: true });
 document.addEventListener("keydown", startAmbientMusic, { once: true });
 renderHome();
+
+document.addEventListener("click", (e) => {
+  if (!state.sfx) return;
+  const isClickable = e.target.closest('button') || e.target.closest('a') || (window.getComputedStyle(e.target).cursor === 'pointer');
+  if (isClickable) {
+    const cs = document.getElementById('clickSound');
+    if (cs) {
+      cs.currentTime = 0;
+      cs.play().catch(()=>{});
+    }
+  }
+});

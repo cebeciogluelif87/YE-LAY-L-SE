@@ -4,18 +4,363 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#091b17">
-  <title>Yeşiliz - Bölüm 1</title>
+  <title>Yeşiliz - Bölüm 1: Kantindeki İlk İz</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Special+Elite&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Special+Elite&family=Abril+Fatface&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Diyalog Sistemi */
+    .dialog-system {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 60;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      display: none;
+    }
+    .dialog-system.active {
+      display: block;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .dialog-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+    /* Based on konusma.png coordinates: (70, 832) to (1850, 972) */
+    .dialog-portrait {
+      position: absolute;
+      top: 832px;
+      left: 70px;
+      width: 140px; 
+      height: 140px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    .dialog-portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .dialog-text-container {
+      position: absolute;
+      top: 832px;
+      left: 240px;
+      width: 1600px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+    }
+    .dialog-text {
+      font-family: 'Abril Fatface', cursive;
+      font-size: 36px;
+      text-align: center;
+      width: 100%;
+      color: #ffffff;
+      margin: 0;
+      opacity: 0;
+      transform: translateY(10px);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .dialog-system.active .dialog-text {
+      animation: textFadeIn 0.5s ease 0.2s forwards;
+    }
+    @keyframes textFadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .dialog-continue-hint {
+      display: none;
+    }
+    .dialog-hitbox {
+      position: absolute;
+      background: none;
+      border: none;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 62;
+    }
+    .dialog-hitbox:hover {
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+
+    /* Kaçış Odası / İnteraktif Araştırma Özel Stilleri */
+    .room-container {
+      position: relative;
+      width: 100%;
+      height: 924px;
+      overflow: hidden;
+      background: #091712;
+    }
+
+    /* İnteraktif Hotspot / Keşif Noktaları */
+    .investigate-point {
+      position: absolute;
+      cursor: pointer;
+      z-index: 15;
+      display: grid;
+      place-items: center;
+      transition: transform 0.25s ease;
+    }
+    .investigate-point:hover {
+      transform: scale(1.12);
+    }
+    .pulse-ring {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      position: relative;
+      display: grid;
+      place-items: center;
+      background: rgba(104, 239, 154, 0.15);
+      box-shadow: 0 0 16px rgba(104, 239, 154, 0.4);
+      animation: pulseAnim 2s infinite;
+    }
+    .pulse-ring i {
+      width: 10px;
+      height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+    .point-tag {
+      position: absolute;
+      top: 54px;
+      background: rgba(9, 23, 18, 0.9);
+      border: 1px solid var(--green);
+      color: #eaf2ec;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 4px 12px #000;
+    }
+    @keyframes pulseAnim {
+      0% { box-shadow: 0 0 0 0 rgba(104, 239, 154, 0.6); }
+      70% { box-shadow: 0 0 0 16px rgba(104, 239, 154, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(104, 239, 154, 0); }
+    }
+
+    /* Diyalog & Anlatım Kartı */
+    .investigation-dialogue {
+      position: absolute;
+      top: 36px;
+      left: 76px;
+      max-width: 520px;
+      background: rgba(11, 33, 27, 0.95);
+      border-left: 3px solid var(--green);
+      border-radius: 0 12px 12px 0;
+      padding: 24px 30px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.6);
+      z-index: 25;
+      backdrop-filter: blur(10px);
+      animation: reveal 0.4s both;
+    }
+    .investigation-dialogue .dialogue-tag {
+      font-size: 15px;
+      letter-spacing: 0.18em;
+      color: var(--green);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .investigation-dialogue h3 {
+      font: 600 32px/1.2 var(--display);
+      margin: 0 0 12px;
+      color: #f1f5f2;
+    }
+    .investigation-dialogue p {
+      font-size: 18px;
+      line-height: 1.7;
+      color: #9cb1a6;
+      margin: 0 0 16px;
+    }
+    .dialogue-btn {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 8px 18px;
+      font-size: 15px;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      transition: 0.2s;
+      border-radius: 4px;
+    }
+    .dialogue-btn:hover {
+      background: var(--green);
+      color: var(--ink);
+    }
+
+    /* 2. Aşama: Dolap Altı Yakın Çekim */
+    .close-up-stage {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, #1b382d 0%, #081410 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      animation: reveal 0.5s both;
+    }
+    .locker-base-view {
+      position: relative;
+      width: 820px;
+      height: 540px;
+      background: linear-gradient(180deg, #182821 0%, #0d1713 100%);
+      border: 12px solid #23372e;
+      border-radius: 8px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.7);
+      overflow: hidden;
+    }
+    .wooden-gap {
+      position: absolute;
+      bottom: 60px;
+      left: 120px;
+      right: 120px;
+      height: 48px;
+      background: #050a08;
+      border-top: 3px solid #3d564a;
+      border-bottom: 2px solid #111a15;
+      box-shadow: inset 0 10px 20px #000;
+    }
+    .stuck-paper {
+      position: absolute;
+      left: 280px;
+      bottom: 66px;
+      width: 88px;
+      height: 38px;
+      background: #8b7d62;
+      border-radius: 2px;
+      transform: rotate(-6deg);
+      cursor: pointer;
+      box-shadow: 0 4px 10px #000;
+      transition: transform 0.3s, filter 0.3s;
+      display: grid;
+      place-items: center;
+    }
+    .stuck-paper::after {
+      content: "";
+      width: 14px;
+      height: 18px;
+      border: 1px solid rgba(104, 239, 154, 0.8);
+      border-radius: 100% 0 100% 0;
+    }
+    .stuck-paper:hover {
+      filter: brightness(1.2);
+    }
+    .target-drop-zone {
+      position: absolute;
+      left: 260px;
+      bottom: 50px;
+      width: 130px;
+      height: 70px;
+      border: 2px dashed rgba(104, 239, 154, 0.4);
+      border-radius: 8px;
+      pointer-events: none;
+      animation: pulse 1.8s infinite;
+    }
+
+    /* Standart Zoom Penceresi Stilleri styles.css dosyasında yönetilmektedir */
+
+    /* Modal Alt Aksiyon Butonları */
+    .modal-actions {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+      z-index: 10;
+    }
+    .action-pill {
+      background: rgba(13, 33, 26, 0.9);
+      border: 1px solid var(--green);
+      color: #eaf5ee;
+      padding: 12px 24px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 15px;
+      letter-spacing: 0.14em;
+      transition: 0.25s ease;
+    }
+    .action-pill:hover {
+      background: var(--green);
+      color: var(--ink);
+      box-shadow: 0 0 25px rgba(104, 239, 154, 0.4);
+    }
+
+    /* 4. Aşama: Dosya Özeti & Çıkarım (Mature / Dossier style) */
+    .dossier-report {
+      max-width: 780px;
+      background: #0f251d;
+      border: 1px solid rgba(104, 239, 154, 0.3);
+      padding: 45px 50px;
+      border-radius: 12px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.7);
+      text-align: left;
+    }
+    .dossier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .dossier-header h2 {
+      font: 600 36px var(--display);
+      margin: 0;
+      color: #f2f7f4;
+    }
+    .evidence-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 24px 0;
+    }
+    .evidence-card-item {
+      background: rgba(6, 17, 13, 0.6);
+      border-left: 3px solid var(--green);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+    }
+    .evidence-card-item b {
+      display: block;
+      font-size: 17px;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .evidence-card-item p {
+      font-size: 17px;
+      color: #a2b4aa;
+      margin: 0;
+      line-height: 1.5;
+    }
+  </style>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
-  <audio id="ambientMusic" src="assets/gizem.mp3" preload="auto" loop></audio>
+  
   <div id="app">
+    <audio id="ambientMusic" src="../assets/gizem2.mp3" preload="auto" loop></audio>
+    <audio id="clickSound" src="../assets/ok.mp3" preload="auto"></audio>
+  <audio id="tahtaSound" src="../assets/tahta.mp3?v=1" preload="auto"></audio>
+  <audio id="dolapSound" src="../assets/dolap.mp3" preload="auto"></audio>
+    
     <header class="topbar">
-      <button class="brand" data-go="home" aria-label="Ana masaya dön">
+      <button class="brand" id="goBackHome" aria-label="Ana masaya dön" onclick="window.location.href='../ana.html'">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" role="presentation">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -24,31 +369,336 @@
         </span>
         <span><b>YEŞİL-İZ</b><small>KAYIP DEFTER</small></span>
       </button>
+      
       <div class="case-status">
         <span class="status-light"></span>
-        <span>DOSYA AKTİF</span>
-        <strong id="progressText">0 / 36</strong>
+        <span>VAKA ARAŞTIRMASI</span>
+        <strong id="progressText">BÖLÜM 01 / HAFTA 01</strong>
       </div>
+      
       <div class="top-actions">
         <button class="icon-button" id="fullscreenToggle" aria-label="Tam ekranı aç">TAM EKRAN</button>
+        <button class="icon-button" id="sfxToggle" aria-label="Efekt Sesi">♫</button>
         <button class="icon-button" id="soundToggle" aria-label="Sesi aç veya kapat">SES: AÇIK</button>
       </div>
     </header>
 
     <main id="view" tabindex="-1">
       <section class="episode-view view-enter">
-        <div class="episode-progress"><i id="sceneProgress"></i></div>
+        <div class="episode-progress"><i id="sceneProgress" style="width: 25%;"></i></div>
+        
         <header class="episode-header">
-          <button class="back-button" data-go="home">← Dosyadan çık</button>
-          <span>BÖLÜM 01 / HAFTA 01</span>
-          <span id="sceneCounter">SAHNE 1 / 4</span>
+          <button class="back-button" id="exitEpisodeBtn">← Soruşturmadan Çık</button>
+          <span>MEKÂN: OKUL KANTİNİ · ÖĞLE ARASI</span>
+          <span id="stepIndicator">ADIM 1 / 4 · ÇEVRE İNCELEMESİ</span>
         </header>
-        <div class="scene-stage" id="sceneStage"></div>
+
+        <!-- Kaçış Odası / İnteraktif Sahne Alanı -->
+        <div class="room-container" id="roomStage">
+          <!-- Dinamik olarak JS tarafından render edilecek -->
+        </div>
+
       </section>
     </main>
+
+    <!-- Görsel Envanter (İpucu) Sistemi -->
+    <div class="visual-inventory" id="inventoryBar">
+      <img src="../assets/ipucu.png" class="inv-bg" alt="İpucu Çerçevesi">
+      <button class="inv-arrow inv-up" id="invUpBtn" aria-label="Yukarı Kaydır">
+        <img src="../assets/ust.png" alt="Yukarı Ok">
+      </button>
+      <div class="inv-carousel-mask">
+        <div class="inv-carousel-track" id="inventorySlots">
+          <!-- JS ile dinamik doldurulacak -->
+        </div>
+      </div>
+      <button class="inv-arrow inv-down" id="invDownBtn" aria-label="Aşağı Kaydır">
+        <img src="../assets/alt.png" alt="Aşağı Ok">
+      </button>
+    </div>
+
+    <!-- Zoom / Yakın Çekim Modal Sistemi -->
+    <div class="zoom-modal-backdrop" id="zoomOverlay">
+      <div class="zoom-modal-container" id="zoomContainer">
+        <div class="zoom-content" id="zoomContent">
+          <img id="zoomImage" class="zoom-modal-image" src="" alt="Yakın Çekim Görünüm">
+          <div id="zoomHotspots" class="zoom-modal-hotspots"></div>
+        </div>
+        <img src="../assets/cerceve.png" class="zoom-frame-overlay" alt="Çerçeve" aria-hidden="true">
+        <div class="zoom-close-hint">Kapatmak için dışarı tıklayın veya ESC tuşuna basın</div>
+      </div>
+    </div>
+
+    <!-- Diyalog Arayüzü -->
+    <div class="dialog-system" id="dialogOverlay">
+      <img src="../assets/konusma.png" class="dialog-bg" id="dialogBgImg" alt="Diyalog Arka Planı">
+      <img src="../assets/geri.png" class="dialog-bg" id="dialogPrevImg" alt="Önceki">
+      <img src="../assets/ileri.png" class="dialog-bg" id="dialogNextImg" alt="Sonraki">
+      
+      <button class="dialog-hitbox" id="dialogPrevBtn" aria-label="Önceki Diyalog" style="top: 860px; left: 10px; width: 60px; height: 80px;"></button>
+      <button class="dialog-hitbox" id="dialogNextBtn" aria-label="Sonraki Diyalog" style="top: 860px; left: 1850px; width: 60px; height: 80px;"></button>
+
+      <div class="dialog-portrait">
+        <img id="dialogPortraitImg" src="" alt="Konuşan Karakter" style="display:none;">
+      </div>
+      <div class="dialog-text-container">
+        <p class="dialog-text" id="dialogTextElement"></p>
+      </div>
+    </div>
+    <!-- Video / Cutscene Overlay -->
+    <div class="cutscene-video-overlay" id="videoOverlay" style="display: none;">
+      <video id="cutsceneVideo" src="assets/x.webm" playsinline preload="auto"></video>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
   <script src="yan.js"></script>
+  <script>
+    /* Bölüm 1 - İnteraktif Kaçış/Araştırma Odası Motoru */
+    const roomStage = document.querySelector("#roomStage");
+            const sceneProgress = document.querySelector("#sceneProgress");
+    const stepIndicator = document.querySelector("#stepIndicator");
+    const dialogOverlay = document.querySelector("#dialogOverlay");
+    const dialogPortraitImg = document.querySelector("#dialogPortraitImg");
+    const dialogTextElement = document.querySelector("#dialogTextElement");
+    const dialogPrevBtn = document.querySelector("#dialogPrevBtn");
+    const dialogNextBtn = document.querySelector("#dialogNextBtn");
+    const dialogPrevImg = document.querySelector("#dialogPrevImg");
+    const dialogNextImg = document.querySelector("#dialogNextImg");
+
+    let currentDialogSequence = [];
+    let currentDialogIndex = 0;
+    let currentPortraitSrc = null;
+    let currentBgType = "konusma";
+
+    function renderDialogState() {
+      if (!dialogOverlay) return;
+      const currentItem = currentDialogSequence[currentDialogIndex];
+      let text = "";
+      let portrait = currentPortraitSrc;
+
+      if (typeof currentItem === "object" && currentItem !== null) {
+        text = currentItem.text || "";
+        if (currentItem.portrait !== undefined) {
+          portrait = currentItem.portrait;
+        }
+        if (currentItem.bg) {
+          const sceneImg = document.querySelector("#scene_a9_bg, #scene_a8_bg, #main_scene_bg, .story-scene img");
+          if (sceneImg) {
+            sceneImg.src = currentItem.bg;
+          }
+        }
+      } else {
+        text = String(currentItem || "");
+      }
+
+      if (typeof state !== "undefined") {
+        state.episode1DialogIndex = currentDialogIndex;
+        if (typeof save === "function") save();
+      }
+
+      if (currentBgType === "konusma") {
+        text = `<i>"${text}"</i>`;
+      }
+      dialogTextElement.innerHTML = text;
+      
+      if (text.includes("bir tıkırtı hissetti") && state.sound) {
+        const ts = document.getElementById("tahtaSound");
+        if (ts) { 
+          ts.currentTime = 0; 
+          ts.play().then(() => console.log("tahta.mp3 played successfully.")).catch(e => {
+            console.error("tahtaSound playback failed:", e);
+            alert("Ses dosyası oynatılamadı! (Belki format veya yol hatalıdır) Hata: " + e.message);
+          });
+        } else {
+          console.error("tahtaSound element not found!");
+          alert("tahtaSound element not found!");
+        }
+      }
+      
+      dialogTextElement.style.animation = 'none';
+      dialogTextElement.offsetHeight; 
+      dialogTextElement.style.animation = null;
+      
+      if (portrait) {
+        dialogPortraitImg.src = portrait;
+        dialogPortraitImg.style.display = "block";
+      } else {
+        dialogPortraitImg.style.display = "none";
+      }
+
+      const hasPrev = currentDialogIndex > 0;
+      const hasNext = currentDialogIndex < currentDialogSequence.length - 1;
+
+      dialogPrevBtn.style.display = hasPrev ? "block" : "none";
+      dialogPrevImg.style.display = hasPrev ? "block" : "none";
+    }
+
+    let dialogCallback = null;
+    function showDialog(sequence, portraitSrc = null, onComplete = null, bgType = "konusma", startIndex = 0) {
+      dialogCallback = onComplete;
+      currentBgType = bgType;
+      if (!dialogOverlay) return;
+      if (!Array.isArray(sequence)) sequence = [sequence];
+      
+      currentDialogSequence = sequence;
+      const bgImg = document.querySelector("#dialogBgImg");
+      if (bgImg) bgImg.src = `../assets/${bgType}.png`;
+      currentDialogIndex = Math.min(sequence.length - 1, Math.max(0, startIndex));
+      currentPortraitSrc = portraitSrc;
+      
+      renderDialogState();
+      dialogOverlay.classList.add("active");
+    }
+
+    if (dialogNextBtn) {
+      dialogNextBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const cs = document.getElementById('clickSound'); if (cs && state.sfx) { cs.currentTime = 0; cs.play().catch(()=>{}); }
+        if (currentDialogIndex < currentDialogSequence.length - 1) {
+          currentDialogIndex++;
+          renderDialogState();
+        } else {
+          dialogOverlay.classList.remove("active");
+          if (dialogCallback) { const cb = dialogCallback; dialogCallback = null; cb(); }
+        }
+      });
+    }
+
+    if (dialogPrevBtn) {
+      dialogPrevBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const cs = document.getElementById('clickSound'); if (cs && state.sfx) { cs.currentTime = 0; cs.play().catch(()=>{}); }
+        if (currentDialogIndex > 0) {
+          currentDialogIndex--;
+          renderDialogState();
+        }
+      });
+    }
+
+    if (dialogOverlay) {
+      dialogOverlay.addEventListener("click", () => {
+        const cs = document.getElementById('clickSound'); if (cs && state.sfx) { cs.currentTime = 0; cs.play().catch(()=>{}); }
+        if (currentDialogIndex < currentDialogSequence.length - 1) {
+          currentDialogIndex++;
+          renderDialogState();
+        } else {
+          dialogOverlay.classList.remove("active");
+          if (dialogCallback) { const cb = dialogCallback; dialogCallback = null; cb(); }
+        }
+      });
+    }
+
+    const VISIBLE_SLOTS = 6;
+    let selectedItem = null;
+    window.selectedItem = null;
+
+    window.updateInventoryUI = function updateInventoryUI() {
+      const track = document.querySelector("#inventorySlots");
+      const upBtn = document.querySelector("#invUpBtn");
+      const downBtn = document.querySelector("#invDownBtn");
+      if (!track) return;
+
+      const maxScroll = Math.max(0, state.inventory.length - VISIBLE_SLOTS);
+      if (upBtn) upBtn.disabled = (state.invScrollIndex >= maxScroll);
+      if (downBtn) downBtn.disabled = (state.invScrollIndex <= 0);
+
+      while (track.children.length > state.inventory.length) {
+        track.removeChild(track.lastChild);
+      }
+      while (track.children.length < state.inventory.length) {
+        const slot = document.createElement("div");
+        slot.className = "inv-slot has-item";
+        slot.innerHTML = `<img src="" alt=""><span class="slot-label"></span>`;
+        track.appendChild(slot);
+      }
+      
+      Array.from(track.children).forEach((slot, index) => {
+        const item = state.inventory[index];
+        slot.dataset.id = item.id;
+        slot.classList.remove("using");
+        slot.classList.toggle("selected", selectedItem && selectedItem.id === item.id);
+        
+        const img = slot.querySelector("img");
+        if (img.src !== item.icon) img.src = item.icon;
+        img.alt = item.name;
+        
+        const label = slot.querySelector(".slot-label");
+        if (label.textContent !== item.name) label.textContent = item.name;
+        
+        slot.onclick = () => {
+          if (slot.classList.contains("using")) return;
+          if (selectedItem && selectedItem.id === item.id) {
+            selectedItem = null;
+            window.selectedItem = null;
+            showToast(`${item.name} bırakıldı.`);
+          } else {
+            selectedItem = item;
+            window.selectedItem = item;
+            showToast(`${item.name} seçildi. Kullanmak istediğin hedefe dokun.`);
+          }
+          updateInventoryUI();
+        };
+      });
+
+      const slotHeight = 118 + 18; 
+      track.style.transform = `translateY(-${state.invScrollIndex * slotHeight}px)`;
+      save();
+    };
+
+    setTimeout(() => {
+      document.querySelector("#invUpBtn")?.addEventListener("click", () => {
+        const maxScroll = Math.max(0, state.inventory.length - VISIBLE_SLOTS);
+        if (state.invScrollIndex < maxScroll) {
+          state.invScrollIndex++;
+          updateInventoryUI();
+        }
+      });
+      document.querySelector("#invDownBtn")?.addEventListener("click", () => {
+        if (state.invScrollIndex > 0) {
+          state.invScrollIndex--;
+          updateInventoryUI();
+        }
+      });
+    }, 100);
+
+    function consumeItem(itemId) {
+      const slot = document.querySelector(`.inv-slot[data-id="${itemId}"]`);
+      if (slot) {
+        slot.classList.add("using");
+        setTimeout(() => {
+          state.inventory = state.inventory.filter(i => i.id !== itemId);
+          if (selectedItem && selectedItem.id === itemId) selectedItem = null;
+          const maxScroll = Math.max(0, state.inventory.length - VISIBLE_SLOTS);
+          if (state.invScrollIndex > maxScroll) state.invScrollIndex = maxScroll;
+          updateInventoryUI();
+        }, 400); 
+      } else {
+        state.inventory = state.inventory.filter(i => i.id !== itemId);
+        updateInventoryUI();
+      }
+    }
+
+    const exitBtns = document.querySelectorAll("#exitEpisodeBtn, #goBackHome");
+    exitBtns.forEach(btn => btn.addEventListener("click", () => {
+      if (typeof save === "function") save();
+      window.location.href = "../ana.html";
+    }));
+
+    // Başlangıç Kurulumu
+    window.addEventListener("resize", fitGameStage);
+    document.addEventListener("fullscreenchange", fitGameStage);
+    fitGameStage();
+
+    if (state.sound) {
+      document.addEventListener("click", () => {
+        
+      }, { once: true });
+    }
+
+    // 1. Adımı Başlat
+    
+  </script>
 </body>
 </html>
