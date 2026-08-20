@@ -22,7 +22,11 @@ const defaultState = {
   paperTaken: false,
   paperInspecting: false,
   paperStep: 0,
-  paperFullyOpened: false
+  paperFullyOpened: false,
+  paperBackSeen: false,
+  paperLightPuzzleSolved: false,
+  paperMessageRevealed: false,
+  firstRiddleSolved: false
 };
 
 let state;
@@ -57,7 +61,7 @@ if (Array.isArray(state.evidence)) {
   if (migrated) {
     try {
       localStorage.setItem("yesiliz-state", JSON.stringify(state));
-    } catch {}
+    } catch { }
   }
 }
 
@@ -121,6 +125,27 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2300);
+}
+
+function addNotebookEntry(category, entry) {
+  if (!state.notebook || typeof state.notebook !== "object") {
+    state.notebook = { thoughts: [], findings: [], questions: [] };
+  }
+  if (!Array.isArray(state.notebook[category])) {
+    state.notebook[category] = [];
+  }
+  const existingIdx = state.notebook[category].findIndex(item => item.id === entry.id);
+  if (existingIdx >= 0) {
+    state.notebook[category][existingIdx] = {
+      ...state.notebook[category][existingIdx],
+      ...entry
+    };
+  } else {
+    state.notebook[category].push({
+      date: new Date().toISOString(),
+      ...entry
+    });
+  }
 }
 
 /* =========================================================
@@ -208,8 +233,15 @@ function closeZoom() {
     return;
   }
 
+  const isLightPuzzleClosing = (currentZoomType === "paper_revealed" || currentZoomType === "window_light_puzzle") && state.paperLightPuzzleSolved;
+
   overlay.classList.remove("active");
   currentZoomType = null;
+
+  // Oyuncu katli7.png'yi inceledikten sonra pencere dışına basınca zoom kapanır ve A14 sahnesi / Kod diyaloğu başlar
+  if (isLightPuzzleClosing) {
+    renderA14Scene();
+  }
 }
 
 /* =========================================================
@@ -241,6 +273,7 @@ function playFloorCutscene() {
     return;
   }
 
+  video.src = "assets/x.webm";
   videoOverlay.style.display = "flex";
   video.currentTime = 0;
   video.muted = !state.sound;
@@ -354,22 +387,35 @@ function setupPaperUnfolding(katliImg, paperSteps, maxStep) {
     if (state.paperStep < maxStep) {
       playClickSound();
       state.paperStep++;
+
+      // Hafif yumuşak geçiş animasyonu (200–350 ms)
+      katliImg.classList.add("step-changing");
+      setTimeout(() => {
+        katliImg.src = paperSteps[state.paperStep];
+        katliImg.classList.remove("step-changing");
+      }, 150);
+
       if (state.paperStep === maxStep) {
+        state.paperTaken = true;
         state.paperFullyOpened = true;
+        state.episode1Stage = "a8";
         katliImg.classList.add("fully-opened");
+        katliImg.onclick = null; // Başka tıklama gerekmez
 
         // 4. İpucu / Envanter paneline ekle
-        if (!Array.isArray(state.inventory)) state.inventory = [];
-        if (!state.inventory.some(i => i.id === "eski_not")) {
-          state.inventory.unshift({
-            id: "eski_not",
-            name: "Eski Not",
-            icon: "assets/katli3.png"
-          });
-          if (typeof window.updateInventoryUI === "function") {
-            window.updateInventoryUI();
+        if (!state.firstRiddleSolved) {
+          if (!Array.isArray(state.inventory)) state.inventory = [];
+          if (!state.inventory.some(i => i.id === "eski_not")) {
+            state.inventory.unshift({
+              id: "eski_not",
+              name: "Eski Not",
+              icon: "assets/katli3.png"
+            });
+            if (typeof window.updateInventoryUI === "function") {
+              window.updateInventoryUI();
+            }
+            showToast("Eski Not envantere eklendi.");
           }
-          showToast("Eski Not envantere eklendi.");
         }
 
         // 5. Kanıt Panosu'na (state.evidence) ekle - ana.html göreli yolu: 1/assets/...
@@ -385,22 +431,28 @@ function setupPaperUnfolding(katliImg, paperSteps, maxStep) {
             date: new Date().toISOString()
           });
         }
-      }
-      save();
 
-      // Hafif yumuşak geçiş animasyonu (200–350 ms)
-      katliImg.classList.add("step-changing");
-      setTimeout(() => {
-        katliImg.src = paperSteps[state.paperStep];
-        katliImg.classList.remove("step-changing");
-      }, 150);
-    } else {
-      // Katlı kâğıt tamamen açıkken (katli3.png) tıklandığında zoom kapanır ve A8 sahnesi başlar
-      playClickSound();
-      const overlay = document.getElementById("zoomOverlay");
-      if (overlay) overlay.classList.remove("active");
-      currentZoomType = null;
-      renderA8Scene();
+        // 6. İz Defteri - Gözlem ekle
+        addNotebookEntry("thoughts", {
+          id: "ep1_note_paper_found",
+          episode: 1,
+          type: "observation",
+          title: "Gözlem",
+          text: "Eski dolabın altında saklanmış bir kâğıt buldum. Buraya tesadüfen düşmüş gibi görünmüyor."
+        });
+
+        save();
+
+        // 300–500 ms kısa bekleme -> zoom otomatik kapanır -> doğrudan a8 sahnesi ve Yeşiliz konuşması başlar
+        setTimeout(() => {
+          const overlay = document.getElementById("zoomOverlay");
+          if (overlay) overlay.classList.remove("active");
+          currentZoomType = null;
+          renderA8Scene();
+        }, 400);
+      } else {
+        save();
+      }
     }
   };
 }
@@ -476,12 +528,515 @@ function renderA9Scene(initialIndex = 0) {
   setTimeout(() => {
     if (typeof showDialog !== "undefined") {
       showDialog(a9DialogSequence, null, () => {
-        // Konuşma bitince diyalog kapanır, a9.png / son arkaplan kalır, burada durulur.
-        state.episode1DialogIndex = a9DialogSequence.length - 1;
-        save();
+        // A12 Kantinci konuşması biter -> İz Defteri Öğrendiğim kaydı eklenir
+        addNotebookEntry("findings", {
+          id: "ep1_note_canteen_board",
+          episode: 1,
+          type: "learned",
+          title: "Öğrendiğim",
+          text: "Eski dolabın üzerinde bir zamanlar öğrencilerin kullandığı bir pano varmış. Sonra pano sessizce ortadan kaldırılmış."
+        });
+
+        // Yeşiliz iç sesi devreye girer
+        state.episode1DialogIndex = 0;
+        showDialog([
+          { text: "Bir dakika...", portrait: "assets/yesil-iz-portrait.png" },
+          { text: "Kâğıdın arkasına hiç bakmadım.", portrait: "assets/yesil-iz-portrait.png" }
+        ], "assets/yesil-iz-portrait.png", () => {
+          openPaperFrontScene();
+        }, "konusma");
       }, "konusma", validIndex);
     }
   }, 300);
+}
+
+/* =========================================================
+   A12 SONRASI KÂĞIT ÖN / ARKA YÜZ VE PENCERE BULMACASI
+   ========================================================= */
+function openPaperFrontScene() {
+  state.episode1Stage = "paper_front_after_canteen";
+  save();
+
+  const overlay = document.getElementById("zoomOverlay");
+  const img = document.getElementById("zoomImage");
+  const hotspotsContainer = document.getElementById("zoomHotspots");
+  if (!overlay || !img || !hotspotsContainer) return;
+
+  currentZoomType = "paper_front";
+  hotspotsContainer.innerHTML = "";
+
+  img.src = "assets/katli4.png";
+  img.style.display = "block";
+  overlay.classList.add("active");
+
+  const katliImg = document.createElement("img");
+  katliImg.src = "assets/katli4.png";
+  katliImg.className = "paper-centered-inspect";
+  katliImg.alt = "Katlı Kâğıt Ön Yüz";
+  hotspotsContainer.appendChild(katliImg);
+
+  // Oyuncu kâğıda tıklar -> katli6.png'ye çevrilir
+  katliImg.onclick = () => {
+    playClickSound();
+    katliImg.onclick = null;
+    katliImg.classList.add("flipping");
+    setTimeout(() => {
+      katliImg.src = "assets/katli6.png";
+      img.src = "assets/katli6.png";
+      katliImg.classList.remove("flipping");
+      openPaperBackScene(true);
+    }, 180);
+  };
+}
+
+function openPaperBackScene(playDialog = false) {
+  state.paperBackSeen = true;
+  state.episode1Stage = "paper_back_faded";
+  save();
+
+  const overlay = document.getElementById("zoomOverlay");
+  const img = document.getElementById("zoomImage");
+  const hotspotsContainer = document.getElementById("zoomHotspots");
+  if (!overlay || !img || !hotspotsContainer) return;
+
+  currentZoomType = "paper_back";
+  hotspotsContainer.innerHTML = "";
+
+  img.src = "assets/katli6.png";
+  img.style.display = "block";
+  overlay.classList.add("active");
+
+  const katliImg = document.createElement("img");
+  katliImg.src = "assets/katli6.png";
+  katliImg.className = "paper-centered-inspect";
+  katliImg.alt = "Katlı Kâğıt Arka Yüz (Silik)";
+  hotspotsContainer.appendChild(katliImg);
+
+  if (playDialog) {
+    setTimeout(() => {
+      if (typeof showDialog !== "undefined") {
+        showDialog([
+          { text: "Burada bir şey yazıyor...", portrait: "assets/yesil-iz-portrait.png" },
+          { text: "Ama mürekkep neredeyse tamamen solmuş.Okumanın bir yolunu bulmalıyım.", portrait: "assets/yesil-iz-portrait.png" }
+        ], "assets/yesil-iz-portrait.png", () => {
+          // Konuşma biter, zoom kapanır, a13.png sahnesine geçilir
+          overlay.classList.remove("active");
+          currentZoomType = null;
+          renderA13Scene();
+        }, "konusma");
+      }
+    }, 200);
+  } else {
+    // Resume durumu: zoom overlay tıklandığında A13'e geç
+    overlay.onclick = () => {
+      overlay.classList.remove("active");
+      overlay.onclick = null;
+      renderA13Scene();
+    };
+  }
+}
+
+function renderA13Scene() {
+  const stage = document.querySelector("#roomStage");
+  if (!stage) return;
+
+  state.episode1Stage = state.paperLightPuzzleSolved ? "window_puzzle_solved" : "a13_window";
+  save();
+
+  const stepInd = document.querySelector("#stepIndicator");
+  if (stepInd) stepInd.textContent = `SAHNE 4 / 4`;
+  const prog = document.querySelector("#sceneProgress");
+  if (prog) prog.style.width = `100%`;
+
+  // Silik kâğıt (veya çözüldüyse ortaya çıkan kâğıt) envanterde yer alır
+  if (!state.firstRiddleSolved) {
+    if (!Array.isArray(state.inventory)) state.inventory = [];
+    const existingNot = state.inventory.find(i => i.id === "eski_not");
+    const currentIcon = state.paperLightPuzzleSolved ? "assets/katli7.png" : "assets/katli6.png";
+    if (existingNot) {
+      existingNot.icon = currentIcon;
+    } else {
+      state.inventory.unshift({
+        id: "eski_not",
+        name: "Eski Not",
+        icon: currentIcon
+      });
+    }
+    if (typeof window.updateInventoryUI === "function") window.updateInventoryUI();
+  }
+
+  stage.innerHTML = `
+    <div class="story-scene" id="scene_a13_stage" style="position:relative; width:100%; height:100%; background:black;">
+      <img id="scene_a13_bg" src="assets/a13.png" alt="Kantinde Pencere Kenarı" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; pointer-events:none;">
+      <div id="scene_a13_hotspots" style="position:absolute; inset:0;"></div>
+    </div>
+  `;
+
+  const hotspotsContainer = stage.querySelector("#scene_a13_hotspots");
+  if (!hotspotsContainer) return;
+
+  // Pencere Hotspotu (Görünmez cam alanı)
+  const windowHotspot = document.createElement("div");
+  windowHotspot.className = "scene-hotspot hotspot-pencere";
+  windowHotspot.style.left = "5%";
+  windowHotspot.style.top = "8%";
+  windowHotspot.style.width = "40%";
+  windowHotspot.style.height = "65%";
+  windowHotspot.style.background = "transparent";
+  windowHotspot.style.cursor = "pointer";
+
+  windowHotspot.addEventListener("click", () => {
+    if (state.paperLightPuzzleSolved) {
+      // Zaten çözüldüyse pencere.png arkada, katli7.png ortada açılır
+      const overlay = document.getElementById("zoomOverlay");
+      const img = document.getElementById("zoomImage");
+      const hotspotsContainer = document.getElementById("zoomHotspots");
+      if (!overlay || !img || !hotspotsContainer) return;
+
+      currentZoomType = "paper_revealed";
+      hotspotsContainer.innerHTML = "";
+      img.src = "assets/pencere.png";
+      img.style.display = "block";
+      img.style.opacity = "1";
+      overlay.classList.add("active");
+
+      const paperImg = document.createElement("img");
+      paperImg.src = "assets/katli7.png";
+      paperImg.className = "paper-centered-inspect";
+      paperImg.alt = "Kâğıt Işığa Tutuldu";
+      hotspotsContainer.appendChild(paperImg);
+      return;
+    }
+
+    const isPaperSelected = (window.selectedItem && (window.selectedItem.id === "eski_not" || (window.selectedItem.icon && window.selectedItem.icon.includes("katli")))) ||
+      (typeof selectedItem !== "undefined" && selectedItem && (selectedItem.id === "eski_not" || (selectedItem.icon && selectedItem.icon.includes("katli"))));
+
+    if (isPaperSelected) {
+      // Seçili nesneyi temizle
+      if (typeof selectedItem !== "undefined") selectedItem = null;
+      window.selectedItem = null;
+      if (typeof window.updateInventoryUI === "function") window.updateInventoryUI();
+
+      playWindowLightPuzzle();
+    }
+  });
+
+  hotspotsContainer.appendChild(windowHotspot);
+}
+
+function playWindowLightPuzzle() {
+  const overlay = document.getElementById("zoomOverlay");
+  const img = document.getElementById("zoomImage");
+  const hotspotsContainer = document.getElementById("zoomHotspots");
+  if (!overlay || !img || !hotspotsContainer) return;
+
+  currentZoomType = "paper_revealed";
+  hotspotsContainer.innerHTML = "";
+
+  // Arka planda pencere.png -> cerceve.png içinde sırayla değişen kâğıt kareleri
+  const frames = [
+    "assets/katli6.png",
+    "assets/katli00.png",
+    "assets/katli01.png",
+    "assets/katli02.png",
+    "assets/katli03.png",
+    "assets/katli7.png"
+  ];
+
+  // Görselleri önceden belleğe yükle
+  frames.forEach(src => {
+    const preloadImg = new Image();
+    preloadImg.src = src;
+  });
+
+  img.src = "assets/pencere.png";
+  img.style.display = "block";
+  img.style.opacity = "1";
+  overlay.classList.add("active");
+
+  const paperImg = document.createElement("img");
+  paperImg.src = frames[0];
+  paperImg.className = "paper-centered-inspect";
+  paperImg.alt = "Kâğıt Işığa Tutuluyor";
+  hotspotsContainer.appendChild(paperImg);
+
+  // 1 saniye aralıklarla kareleri değiştir
+  let currentFrameIdx = 0;
+  const frameInterval = setInterval(() => {
+    currentFrameIdx++;
+    if (currentFrameIdx < frames.length) {
+      paperImg.src = frames[currentFrameIdx];
+    }
+
+    // katli7.png (son kare) ulaşıldığında animasyon durur ve sabit kalır
+    if (currentFrameIdx >= frames.length - 1) {
+      clearInterval(frameInterval);
+
+      // State ve veri güncellemeleri
+      state.paperBackSeen = true;
+      state.paperLightPuzzleSolved = true;
+      state.paperMessageRevealed = true;
+      state.episode1Stage = "window_puzzle_solved";
+
+      // Envanter güncelle: katli7.png
+      const notItem = state.inventory.find(i => i.id === "eski_not");
+      if (notItem) notItem.icon = "assets/katli7.png";
+      if (typeof window.updateInventoryUI === "function") window.updateInventoryUI();
+
+      // Kanıt Panosu güncelle: 1/assets/katli7.png
+      if (Array.isArray(state.evidence)) {
+        const ev = state.evidence.find(e => e.id === "evidence_01");
+        if (ev) {
+          ev.image = "1/assets/katli7.png";
+          ev.description = "Güneş ışığında ortaya çıkan gizli mesaj: 'Sessizliğin en çok konuştuğu yerde ara.'";
+        }
+      }
+
+      // 4. İz Defteri - Çözülmemiş İpucu ekle (Kütüphane henüz yazılmaz)
+      addNotebookEntry("thoughts", {
+        id: "ep1_note_paper_riddle",
+        episode: 1,
+        type: "clue",
+        title: "Çözülmemiş İpucu",
+        text: "“Sessizliğin en çok konuştuğu yerde ara.”",
+        solved: false
+      });
+
+      save();
+
+      // katli7.png (son kare) ekranda sabit kalır. Otomatik kapanmaz;
+      // Oyuncu zoom penceresi dışına (veya kâğıda) basınca closeZoom() tetiklenir, zoom kapanır ve A14 Kod diyaloğu başlar.
+      paperImg.style.cursor = "pointer";
+      paperImg.addEventListener("click", () => {
+        closeZoom();
+      });
+    }
+  }, 1000);
+}
+
+function renderA14Scene(initialIndex = 0) {
+  const stage = document.querySelector("#roomStage");
+  if (!stage) return;
+
+  state.episode1Stage = "a14";
+  save();
+
+  const stepInd = document.querySelector("#stepIndicator");
+  if (stepInd) stepInd.textContent = `SAHNE 4 / 4`;
+  const prog = document.querySelector("#sceneProgress");
+  if (prog) prog.style.width = `100%`;
+
+  // Kod ve Yeşil-İz diyaloğu otomatik başlar
+  const kodDialogSequence = [
+    { text: "Hey, bunu nereden buldun? Bu bir el yazısı şifresi gibi duruyor...", portrait: "assets/kod.png", bg: "assets/a14.png" },
+    { text: "Ama daha ilginç olan, kâğıdın kenarındaki bu küçük numara. Bak, ‘01’ yazıyor.", portrait: "assets/kod.png", bg: "assets/a15.png" },
+    { text: "Sanki bir seri gibi.", portrait: "assets/kod.png", bg: "assets/a15.png" },
+    { text: "Bir seri... Yani bu, tek bir not değil. Bir dizinin ilk parçası olabilir.", portrait: "assets/yesil-iz-portrait.png", bg: "assets/a16.png" },
+    { text: "Peki ilk ipucunun cevabı ne?", portrait: "assets/yesil-iz-portrait.png", bg: "assets/a16.png" }
+  ];
+
+  const validIndex = Math.min(kodDialogSequence.length - 1, Math.max(0, initialIndex));
+  const currentBg = (kodDialogSequence[validIndex] && kodDialogSequence[validIndex].bg) || "assets/a14.png";
+
+  // Eski a13 pencere hotspotları tamamen temizlenir, a14.png tam ekran sahne olarak çizilir
+  stage.innerHTML = `
+    <div class="story-scene" id="scene_a14_stage" style="position:relative; width:100%; height:100%; background:black;">
+      <img id="scene_a14_bg" src="${currentBg}" alt="Kod ve Yeşil-İz Sahnesi" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; pointer-events:none;">
+    </div>
+  `;
+
+  setTimeout(() => {
+    if (typeof showDialog !== "undefined") {
+      showDialog(kodDialogSequence, null, () => {
+        // 3. İz Defteri - Açık Soru ekle (01 seri numarası)
+        addNotebookEntry("questions", {
+          id: "ep1_note_01_question",
+          episode: 1,
+          type: "question",
+          title: "Açık Soru",
+          question: "01 bir seri numarasıysa, devamı nerede?",
+          status: "open"
+        });
+
+        // Konuşma biter, diyalog kapanır, şifre/cevap giriş modalı açılır
+        openRiddleModal();
+      }, "konusma", validIndex);
+    }
+  }, 250);
+}
+
+function openRiddleModal() {
+  const overlay = document.getElementById("riddleOverlay");
+  const input = document.getElementById("riddleInput");
+  const form = document.getElementById("riddleForm");
+  const error = document.getElementById("riddleError");
+  if (!overlay || !input || !form) return;
+
+  error.textContent = "";
+  input.value = "";
+  overlay.classList.add("active");
+  setTimeout(() => input.focus(), 150);
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const rawVal = input.value || "";
+    const clean = rawVal.trim().toLowerCase()
+      .replace(/ı/g, 'i')
+      .replace(/ü/g, 'u')
+      .replace(/ö/g, 'o')
+      .replace(/ş/g, 's')
+      .replace(/ç/g, 'c')
+      .replace(/ğ/g, 'g');
+
+    if (clean === "kutuphane") {
+      // Doğru cevap!
+      playClickSound();
+      overlay.classList.remove("active");
+      form.onsubmit = null;
+
+      // 1. Eski Not'u ipucu/envanter penceresinden kaldır
+      if (Array.isArray(state.inventory)) {
+        state.inventory = state.inventory.filter(i => i.id !== "eski_not");
+      }
+      if (typeof window.selectedItem !== "undefined" && window.selectedItem && window.selectedItem.id === "eski_not") {
+        window.selectedItem = null;
+      }
+      if (typeof selectedItem !== "undefined" && selectedItem && selectedItem.id === "eski_not") {
+        selectedItem = null;
+      }
+      if (typeof window.updateInventoryUI === "function") {
+        window.updateInventoryUI();
+      }
+
+      // 2. Kanıt Panosu'ndaki kaydı SİLME; kalıcı kanıt olarak güncelle
+      if (!Array.isArray(state.evidence)) state.evidence = [];
+      const evIndex = state.evidence.findIndex(e => e.id === "evidence_01");
+      const evData = {
+        id: "evidence_01",
+        title: "Eski Not",
+        category: "clue",
+        episode: 1,
+        image: "1/assets/katli7.png",
+        description: "Güneş ışığında ortaya çıkan gizli mesaj: 'Sessizliğin en çok konuştuğu yerde ara.'",
+        status: "solved"
+      };
+      if (evIndex >= 0) {
+        state.evidence[evIndex] = { ...state.evidence[evIndex], ...evData };
+      } else {
+        state.evidence.push(evData);
+      }
+
+      // 3. İz Defteri'ndeki çözülmemiş ipucunu güncelle (çoğaltma yapmadan)
+      addNotebookEntry("thoughts", {
+        id: "ep1_note_paper_riddle",
+        episode: 1,
+        type: "clue",
+        title: "ÇÖZÜLEN İPUCU",
+        text: "“Sessizliğin en çok konuştuğu yerde ara.”\n\nÇözüm: Kütüphane",
+        solved: true
+      });
+      addNotebookEntry("findings", {
+        id: "ep1_note_next_trace",
+        episode: 1,
+        type: "next_trace",
+        title: "Sonraki İz",
+        text: "Soruşturma kütüphanede devam ediyor."
+      });
+
+      // State kaydet
+      state.firstRiddleSolved = true;
+      state.episode1Stage = "first_riddle_solved";
+      if (!Array.isArray(state.completed)) state.completed = [];
+      if (!state.completed.includes(1)) {
+        state.completed.push(1);
+      }
+      save();
+
+      // 4. Final Diyaloğu ve ardından kapanis.mp4 -> Bölüm 1 Tamamlandı Ekranı
+      setTimeout(() => {
+        if (typeof showDialog !== "undefined") {
+          showDialog([
+            { text: "Kütüphane...", portrait: "assets/yesil-iz-portrait.png" },
+            { text: "Demek sıradaki iz orada.", portrait: "assets/kod.png" }
+          ], "assets/yesil-iz-portrait.png", () => {
+            // Konuşma bittiğinde önce kapanis.mp4 oynatılır, video tamamlandığında Bölüm 1 Tamamlandı ekranı açılır
+            playClosingCutscene(() => {
+              renderCompletionScene();
+            });
+          }, "konusma");
+        }
+      }, 300);
+    } else {
+      // Yanlış cevap
+      if (!clean) {
+        error.textContent = "Lütfen bir cevap yazın.";
+      } else {
+        error.textContent = "Bu cevap ipucuyla uyuşmuyor.";
+      }
+      input.focus();
+    }
+  };
+}
+
+function playClosingCutscene(onComplete) {
+  // kapanis.mp4 oynatılacağı zaman gizem.mp3 / gizem2.mp3 ve tüm arka plan müzikleri durdurulur
+  const allAudios = document.querySelectorAll("audio");
+  allAudios.forEach(a => {
+    try {
+      a.pause();
+    } catch(e) {}
+  });
+
+  const ambientMusic = document.querySelector("#ambientMusic");
+  if (ambientMusic) {
+    try {
+      ambientMusic.pause();
+    } catch(e) {}
+  }
+
+  const videoOverlay = document.getElementById("videoOverlay");
+  const video = document.getElementById("cutsceneVideo");
+  if (!videoOverlay || !video) {
+    if (typeof onComplete === "function") onComplete();
+    return;
+  }
+
+  video.src = "assets/kapanis.mp4";
+  videoOverlay.style.display = "flex";
+  video.currentTime = 0;
+  video.muted = !state.sound;
+
+  video.play().catch(() => {
+    video.muted = true;
+    video.play().catch(() => { });
+  });
+
+  video.onended = () => {
+    videoOverlay.style.display = "none";
+    state.episode1Stage = "episode1_completed";
+    state.firstRiddleSolved = true;
+    if (!Array.isArray(state.completed)) state.completed = [];
+    if (!state.completed.includes(1)) state.completed.push(1);
+    if (Array.isArray(state.inventory)) {
+      state.inventory = state.inventory.filter(i => i.id !== "eski_not");
+    }
+    save();
+    sessionStorage.setItem("justCompleted1", "true");
+    window.location.href = "../ana.html#completed1";
+  };
+}
+
+function renderCompletionScene() {
+  state.episode1Stage = "episode1_completed";
+  state.firstRiddleSolved = true;
+  if (!Array.isArray(state.completed)) state.completed = [];
+  if (!state.completed.includes(1)) state.completed.push(1);
+  if (Array.isArray(state.inventory)) {
+    state.inventory = state.inventory.filter(i => i.id !== "eski_not");
+  }
+  save();
+  sessionStorage.setItem("justCompleted1", "true");
+  window.location.href = "../ana.html#completed1";
 }
 
 /* =========================================================
@@ -614,14 +1169,43 @@ function renderEpisode() {
   const stage = document.querySelector("#roomStage");
   if (!stage) return;
 
+  // Çözüldüyse Eski Not envanterden kalıcı olarak temiz kalır
+  if (state.firstRiddleSolved && Array.isArray(state.inventory)) {
+    state.inventory = state.inventory.filter(i => i.id !== "eski_not");
+  }
+
   // Kaydedilmiş aşamadan kaldığı yerden devam etme kontrolü
   const savedStage = state.episode1Stage;
 
+  if (savedStage === "episode1_completed" || savedStage === "first_riddle_solved") {
+    renderCompletionScene();
+    return;
+  }
+  if (savedStage === "a14") {
+    renderA14Scene(state.episode1DialogIndex || 0);
+    return;
+  }
+  if (savedStage === "window_puzzle_solved" || state.paperLightPuzzleSolved) {
+    renderA14Scene();
+    return;
+  }
+  if (savedStage === "a13_window") {
+    renderA13Scene();
+    return;
+  }
+  if (savedStage === "paper_back_faded") {
+    openPaperBackScene(false);
+    return;
+  }
+  if (savedStage === "paper_front_after_canteen") {
+    openPaperFrontScene();
+    return;
+  }
   if (savedStage === "a9") {
     renderA9Scene(state.episode1DialogIndex || 0);
     return;
   }
-  if (savedStage === "a8") {
+  if (savedStage === "a8" || state.paperFullyOpened) {
     renderA8Scene(state.episode1DialogIndex || 0);
     return;
   }

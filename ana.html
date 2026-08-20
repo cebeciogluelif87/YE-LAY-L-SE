@@ -155,6 +155,25 @@
     </section>
   </template>
 
+  <!-- Bölüm Tamamlandı Modal / Ekranı -->
+  <div class="completion-modal-overlay" id="completionModal" style="display: none;">
+    <div class="completion-card">
+      <div class="completion-mark">
+        <i></i>
+      </div>
+      <p class="eyebrow">BÖLÜM 1 TAMAMLANDI</p>
+      <h3 class="completion-title">Birinci İz Çözüldü</h3>
+      <p class="completion-desc">
+        “Sessizliğin en çok konuştuğu yerde ara.”<br>
+        İlk şifre çözüldü: Kütüphane. Sıradaki iz okulun sessiz koridorlarında ve tozlu raflarında seni bekliyor.
+      </p>
+      <div class="completion-actions">
+        <button id="completionOpenNotebookBtn">İZ DEFTERİNİ AÇ</button>
+        <button id="completionCloseBtn">SEZON DOSYASINA DÖN</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="ana.js"></script>
 </body>

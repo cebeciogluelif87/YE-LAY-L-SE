@@ -34,22 +34,26 @@
       object-fit: cover;
       pointer-events: none;
     }
-    /* Based on konusma.png coordinates: (70, 832) to (1850, 972) */
+    /* Based on konusma.png coordinates: (71, 833) to (249, 971) */
     .dialog-portrait {
       position: absolute;
-      top: 832px;
-      left: 70px;
-      width: 140px; 
-      height: 140px;
-      display: grid;
-      place-items: center;
+      top: 833px;
+      left: 71px;
+      width: 178px; 
+      height: 138px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
       overflow: hidden;
       border-radius: 4px;
     }
     .dialog-portrait img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 94%;
+      max-height: 94%;
+      object-fit: contain;
+      object-position: bottom center;
+      display: block;
+      margin-bottom: 4px;
     }
     .dialog-text-container {
       position: absolute;
@@ -97,13 +101,20 @@
       border-radius: 8px;
     }
 
+    .episode-header, .episode-progress {
+      display: none !important;
+    }
+
     /* Kaçış Odası / İnteraktif Araştırma Özel Stilleri */
-    .room-container {
-      position: relative;
-      width: 100%;
-      height: 924px;
+    .room-container, #roomStage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
       overflow: hidden;
       background: #091712;
+      z-index: 1;
     }
 
     /* İnteraktif Hotspot / Keşif Noktaları */
@@ -449,6 +460,20 @@
     <div class="cutscene-video-overlay" id="videoOverlay" style="display: none;">
       <video id="cutsceneVideo" src="assets/x.webm" playsinline preload="auto"></video>
     </div>
+
+    <!-- Şifre / Bilmece Çözüm Modalı -->
+    <div class="riddle-modal-overlay" id="riddleOverlay">
+      <div class="riddle-card">
+        <span class="riddle-badge">GİZLİ NOT #01</span>
+        <h3 class="riddle-title">İLK İPUCUNU ÇÖZ</h3>
+        <p class="riddle-quote">“Sessizliğin en çok konuştuğu yerde ara.”</p>
+        <form class="riddle-input-group" id="riddleForm" onsubmit="return false;">
+          <input type="text" class="riddle-input" id="riddleInput" placeholder="Cevabını yaz..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button type="submit" class="riddle-submit-btn" id="riddleSubmitBtn">CEVABI KONTROL ET</button>
+        </form>
+        <div class="riddle-error" id="riddleError"></div>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -484,7 +509,7 @@
           portrait = currentItem.portrait;
         }
         if (currentItem.bg) {
-          const sceneImg = document.querySelector("#scene_a9_bg, #scene_a8_bg, #main_scene_bg, .story-scene img");
+          const sceneImg = document.querySelector("#scene_a14_bg, #scene_a9_bg, #scene_a8_bg, #main_scene_bg, .story-scene img");
           if (sceneImg) {
             sceneImg.src = currentItem.bg;
           }

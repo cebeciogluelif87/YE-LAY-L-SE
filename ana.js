@@ -67,7 +67,11 @@ const defaultState = {
   paperTaken: false,
   paperInspecting: false,
   paperStep: 0,
-  paperFullyOpened: false
+  paperFullyOpened: false,
+  paperBackSeen: false,
+  paperLightPuzzleSolved: false,
+  paperMessageRevealed: false,
+  firstRiddleSolved: false
 };
 
 let state;
@@ -305,16 +309,15 @@ function renderEpisodeGrid(grid) {
   grid.innerHTML = "";
   const [start, end] = acts[state.activeAct].range;
   for (let number = start; number <= end; number++) {
-    const complete = state.completed.includes(number);
-    const unlocked = number === 1 || state.completed.includes(number - 1);
+    const isCompleted = (Array.isArray(state.completed) && state.completed.includes(number)) || (number === 1 && (state.firstRiddleSolved || state.episode1Stage === "episode1_completed" || state.episode1Stage === "first_riddle_solved"));
+    const unlocked = number === 1 || (Array.isArray(state.completed) && state.completed.includes(number - 1)) || (number === 2 && isCompleted);
     const card = document.createElement("button");
-    card.className = `episode-card ${complete ? "complete" : ""} ${unlocked && !complete ? "current" : ""}`;
+    card.className = `episode-card ${isCompleted ? "complete" : ""} ${unlocked && !isCompleted ? "current" : ""}`;
     card.style.setProperty("--tilt", `${((number % 5) - 2) * 0.8}deg`);
     card.disabled = !unlocked;
     card.innerHTML = `
       <span class="number">${String(number).padStart(2, "0")}</span>
-      ${complete ? `<b>${episodeNames[number - 1]}</b>` : ""}
-      <small>${complete ? "TAMAMLANDI" : unlocked ? "İNCELEMEYE HAZIR" : "KİLİTLİ DOSYA"}</small>
+      ${!isCompleted ? `<small>${unlocked ? "İNCELEMEYE HAZIR" : "KİLİTLİ DOSYA"}</small>` : ""}
     `;
     if (number === 1) card.addEventListener("click", () => startEpisode(1));
     else if (number === 2 && unlocked) card.addEventListener("click", () => startEpisode(2));
@@ -375,16 +378,21 @@ function renderNotebookContent(tab) {
     }
     content.innerHTML = `
       <div class="journal-list">
-        ${thoughts.map((item, i) => `
-          <article class="journal-item">
-            <div class="journal-item-header">
-              <span class="journal-tag">NOT #${String(i + 1).padStart(2, "0")} · BÖLÜM ${String(item.episode || 1).padStart(2, "0")}</span>
-              ${item.date ? `<time class="journal-date">${stampDate(item.date)}</time>` : ''}
-            </div>
-            <h3 class="journal-title">${item.title}</h3>
-            <p class="journal-text">“${item.text}”</p>
-          </article>
-        `).join("")}
+        ${thoughts.map((item, i) => {
+          const rawText = item.text || "";
+          const formatted = rawText.replace(/\n/g, '<br>');
+          const displayText = rawText.startsWith("“") || rawText.startsWith('"') ? formatted : `“${formatted}”`;
+          return `
+            <article class="journal-item">
+              <div class="journal-item-header">
+                <span class="journal-tag">${(item.title || 'NOT').toUpperCase()} #${String(i + 1).padStart(2, "0")} · BÖLÜM ${String(item.episode || 1).padStart(2, "0")}</span>
+                ${item.date ? `<time class="journal-date">${stampDate(item.date)}</time>` : ''}
+              </div>
+              <h3 class="journal-title">${item.title}</h3>
+              <p class="journal-text">${displayText}</p>
+            </article>
+          `;
+        }).join("")}
       </div>
     `;
   } else if (tab === "findings") {
@@ -405,11 +413,11 @@ function renderNotebookContent(tab) {
         ${findings.map((item, i) => `
           <article class="journal-item">
             <div class="journal-item-header">
-              <span class="journal-tag">BİLGİ #${String(i + 1).padStart(2, "0")} · BÖLÜM ${String(item.episode || 1).padStart(2, "0")}</span>
+              <span class="journal-tag">${(item.title || 'BİLGİ').toUpperCase()} #${String(i + 1).padStart(2, "0")} · BÖLÜM ${String(item.episode || 1).padStart(2, "0")}</span>
               ${item.date ? `<time class="journal-date">${stampDate(item.date)}</time>` : ''}
             </div>
             <h3 class="journal-title">${item.title}</h3>
-            <p class="journal-finding-text">${item.text}</p>
+            <p class="journal-finding-text">${(item.text || '').replace(/\n/g, '<br>')}</p>
           </article>
         `).join("")}
       </div>
@@ -533,7 +541,50 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-if (window.location.hash === "#notebook") {
+function openCompletionModal() {
+  const modal = document.getElementById("completionModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  requestAnimationFrame(() => modal.classList.add("active"));
+}
+
+function closeCompletionModal() {
+  const modal = document.getElementById("completionModal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  setTimeout(() => { modal.style.display = "none"; }, 350);
+}
+
+const compNotebookBtn = document.getElementById("completionOpenNotebookBtn");
+if (compNotebookBtn) {
+  compNotebookBtn.addEventListener("click", () => {
+    closeCompletionModal();
+    navigate("notebook");
+  });
+}
+const compCloseBtn = document.getElementById("completionCloseBtn");
+if (compCloseBtn) {
+  compCloseBtn.addEventListener("click", () => {
+    closeCompletionModal();
+    navigate("board");
+  });
+}
+
+const completionModal = document.getElementById("completionModal");
+if (completionModal) {
+  completionModal.addEventListener("click", (e) => {
+    if (e.target === completionModal) {
+      closeCompletionModal();
+      navigate("board");
+    }
+  });
+}
+
+if (window.location.hash === "#completed1" || sessionStorage.getItem("justCompleted1") === "true") {
+  sessionStorage.removeItem("justCompleted1");
+  navigate("board");
+  setTimeout(() => openCompletionModal(), 200);
+} else if (window.location.hash === "#notebook") {
   navigate("notebook");
 } else if (window.location.hash === "#board") {
   navigate("board");

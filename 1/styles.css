@@ -22,7 +22,7 @@ button { color: inherit; font: inherit; }
 button:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
 .grain { position: fixed; inset: 0; pointer-events: none; opacity: .18; z-index: 20; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E"); mix-blend-mode: overlay; }
 
-.topbar { background: #07130f; height: 82px; display: flex; align-items: center; justify-content: space-between; padding: 0 76px; border-bottom: 1px solid var(--line); position: relative; z-index: 70; }
+.topbar { background: rgba(7, 19, 15, 0.85); backdrop-filter: blur(8px); height: 92px; display: flex; align-items: center; justify-content: space-between; padding: 0 76px; border-bottom: 1px solid var(--line); position: absolute; top: 0; left: 0; width: 1920px; z-index: 70; }
 .brand { display: flex; align-items: center; gap: 12px; background: none; border: 0; cursor: pointer; padding: 0; text-align: left; }
 .brand-mark { width: 34px; aspect-ratio: 1;  display: grid; place-items: center; }
 .brand-mark svg { width: 29px; height: 29px; overflow: visible; }
@@ -117,8 +117,31 @@ h1 em { color: var(--green); font-weight: 500; }
 .episode-card .number { font: 600 50px/1 var(--display); display: block; margin: 15px 0 7px; }
 .episode-card b { font: 600 17px/1.25 var(--display); display: block; }
 .episode-card small { font-size: 11px; letter-spacing: .1em; color: #65736b; position: absolute; left: 15px; bottom: 12px; }
-.episode-card.current { outline: 2px solid var(--green); box-shadow: 0 0 26px rgba(104,239,154,.22); }
-.episode-card.complete::after { content: "TAMAMLANDI"; position: absolute; left: 50%; top: 50%; color: #7e2c2c; border: 2px solid #7e2c2c; font-size: 18px; font-weight: 700; padding: 7px 10px; transform: translate(-50%, -50%) rotate(8deg); }
+.episode-card.complete::after {
+  content: "TAMAMLANDI";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #8b1e1e;
+  border: 3px solid #8b1e1e;
+  border-radius: 4px;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  padding: 6px 14px;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  text-transform: uppercase;
+  pointer-events: none;
+  background: rgba(139, 30, 30, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(139, 30, 30, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25);
+  opacity: 0.92;
+  white-space: nowrap;
+  z-index: 10;
+}
+.episode-card.complete small {
+  display: none !important;
+}
 .board-note { position: absolute; right: 35px; top: 55px; width: 210px; min-height: 250px; padding: 27px 24px; color: #27271f; background: #d8cb82; transform: rotate(2deg); box-shadow: 5px 10px 16px #0006; z-index: 2; }
 .board-note span,.board-note small { font-size: 11px; letter-spacing: .12em; }.board-note p { font: 28px/1.15 var(--hand); }.board-note small { position: absolute; bottom: 20px; color: #a74e38; }
 
@@ -194,11 +217,12 @@ h1 { font-size:105px; }
 .episode-grid { grid-template-columns:repeat(3,minmax(0,1fr)); width:1050px; max-width:calc(100% - 255px); padding-bottom:0; }
 .notebook-shell { max-width:1420px; }
 .notebook-page { height:610px; min-height:0; overflow:hidden; }
-.episode-view { width:1920px; height:988px; min-height:0; padding-bottom:0; }
-.episode-header { padding:0 96px; }
-.scene-stage { height:924px; min-height:0; }
-.story-scene, .inspect-scene, .completion-scene { height:924px; min-height:0; display:block; }
-.scene-visual, .inspect-area { position:absolute; inset:0; }
+.episode-view { width: 1920px; height: 1080px; min-height: 0; padding: 0; position: absolute; top: 0; left: 0; overflow: hidden; }
+.episode-header { display: none !important; }
+.episode-progress { display: none !important; }
+.scene-stage { height: 1080px; width: 1920px; min-height: 0; position: absolute; top: 0; left: 0; }
+.story-scene, .inspect-scene, .completion-scene { height: 1080px; width: 1920px; min-height: 0; display: block; position: absolute; top: 0; left: 0; }
+.scene-visual, .inspect-area { position: absolute; inset: 0; width: 1920px; height: 1080px; }
 .scene-copy { padding:80px 96px; }
 .dialogue { font-size:32px; }
 .inspect-copy { padding:65px 75px 50px 130px; }
@@ -267,8 +291,13 @@ h1 { font-size:105px; }
       place-items: center;
       position: relative;
       cursor: pointer;
-      transition: 0.4s ease; /* Fade/Scale transition for usage */
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
       flex-shrink: 0;
+      background: transparent;
+      overflow: visible;
+    }
+    .inv-slot:hover {
+      transform: scale(1.08);
     }
     .inv-slot.using {
       opacity: 0;
@@ -276,16 +305,27 @@ h1 { font-size:105px; }
       pointer-events: none;
     }
     .inv-slot.selected {
-      background: rgba(104, 239, 154, 0.15);
-      box-shadow: inset 0 0 15px rgba(104, 239, 154, 0.3);
-      transform: scale(1.05);
+      background: transparent;
+      box-shadow: none;
+      transform: scale(1.2);
+      z-index: 10;
+    }
+    .inv-slot.selected:hover {
+      transform: scale(1.22);
     }
     .inv-slot img {
       width: 80%;
       height: 80%;
       object-fit: contain;
       filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+      transition: filter 0.25s ease, transform 0.25s ease;
       pointer-events: none;
+    }
+    .inv-slot:hover img {
+      filter: brightness(1.1) drop-shadow(0 0 10px rgba(255, 255, 255, 0.45));
+    }
+    .inv-slot.selected img {
+      filter: brightness(1.15) drop-shadow(0 0 16px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 30px rgba(255, 255, 255, 0.6));
     }
     .inv-slot .slot-label {
       position: absolute;
@@ -314,19 +354,15 @@ h1 { font-size:105px; }
 
 
 
-#roomStage {
-  position: absolute;
-  top: -92px;
-  left: 0;
-  width: 1920px;
-  height: 1080px;
-  overflow: hidden;
-  z-index: 0;
-}
+
 
 #app:has(#dialogOverlay.active) #inventoryBar {
   transform: translateX(400px);
   opacity: 0;
+}
+
+#app:has(.completion-scene) #inventoryBar {
+  display: none !important;
 }
 
 #sfxToggle { color: #ffffff !important; margin-right: 8px; }
@@ -439,7 +475,7 @@ h1 { font-size:105px; }
 }
 
 .zoom-item-cetvel:hover {
-  filter: brightness(1.2) drop-shadow(0 0 14px rgba(104, 239, 154, 0.8));
+  filter: brightness(1.1);
 }
 
 .zoom-close-hint {
@@ -464,11 +500,11 @@ h1 { font-size:105px; }
   cursor: pointer;
   z-index: 15;
   touch-action: manipulation;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  background: transparent;
 }
 
 .scene-hotspot:hover {
-  background-color: rgba(104, 239, 154, 0.08);
+  background: transparent;
 }
 
 /* Cutscene Video Overlay */
@@ -507,8 +543,8 @@ h1 { font-size:105px; }
 }
 
 .paper-in-hole:hover {
-  filter: brightness(1.2) drop-shadow(0 0 14px rgba(104, 239, 154, 0.8));
-  transform: translate(-50%, -50%) scale(1.08);
+  filter: brightness(1.15) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.8));
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
 .paper-centered-inspect {
@@ -533,7 +569,140 @@ h1 { font-size:105px; }
   transform: translate(-50%, -50%) scale(0.95) rotate(-1.5deg);
 }
 
+.paper-centered-inspect.flipping {
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.18s ease;
+  transform: translate(-50%, -50%) scaleX(0.05) scaleY(0.95);
+  opacity: 0.7;
+}
+
 .paper-centered-inspect.fully-opened {
   cursor: default;
+}
+
+/* Şifre / Bilmece Çözüm Modalı */
+.riddle-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 9, 7, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.riddle-modal-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.riddle-card {
+  width: 580px;
+  background: radial-gradient(circle at 50% 0%, #15382b 0%, #0c241c 60%, #071712 100%);
+  border: 2px solid rgba(104, 239, 154, 0.4);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(104, 239, 154, 0.15);
+  border-radius: 18px;
+  padding: 42px 48px;
+  text-align: center;
+  color: #edf0e5;
+  position: relative;
+  animation: riddlePop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes riddlePop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.riddle-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: #68ef9a;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.riddle-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.riddle-quote {
+  font-size: 18px;
+  font-style: italic;
+  color: #c9e8d5;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 16px 20px;
+  border-radius: 10px;
+  border-left: 3px solid #68ef9a;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.riddle-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.riddle-input {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  background: #05100c;
+  border: 1.5px solid rgba(104, 239, 154, 0.4);
+  border-radius: 12px;
+  color: #68ef9a;
+  outline: none;
+  letter-spacing: 1.5px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.riddle-input:focus {
+  border-color: #68ef9a;
+  box-shadow: 0 0 20px rgba(104, 239, 154, 0.35);
+}
+
+.riddle-submit-btn {
+  padding: 16px 28px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #061912;
+  background: linear-gradient(135deg, #68ef9a 0%, #3ec273 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(62, 194, 115, 0.35);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.riddle-submit-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.riddle-submit-btn:active {
+  transform: translateY(1px);
+}
+
+.riddle-error {
+  min-height: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ff7675;
+  margin-top: 10px;
 }
 
